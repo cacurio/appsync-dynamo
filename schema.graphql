@@ -1,0 +1,24 @@
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
+
+
+type User {
+	id: ID!
+	name: String!
+	email: String!
+  age: Int
+}
+
+
+type Mutation {
+  #  Post user
+  createUser(id: ID!, name: String!, email: String, age: Int): User
+}
+
+type Query {
+  #  Get user by id
+  user(userId: String!): User
+}

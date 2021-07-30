@@ -1,0 +1,87 @@
+
+service: myservice
+
+frameworkVersion: '2'
+
+plugins:
+  - serverless-appsync-plugin
+
+provider:
+  name: aws
+  region: ${self:custom.region.${opt:stage, 'dev'}}
+  stage: ${opt:stage, 'dev'}
+  profile: acurioaws
+custom:
+  accountId: 569814006789
+  bucket:
+    prod: evaluar.serverless.${opt:stage, 'dev'}
+    dev: evaluar.serverless.apis.${opt:stage, 'dev'}
+  region:
+    dev: us-east-1
+  appSync:
+    name: ${self:provider.stage}-api_users
+    id: ${self:provider.stage}-api_users
+    # apiKey # only required for update-appsync/delete-appsync
+    authenticationType: API_KEY
+    logConfig:
+      loggingRoleArn: arn:aws:iam::569814006789:role/aws-service-role/events.amazonaws.com/AWSServiceRoleForCloudWatchEvents # Where AppSyncLoggingServiceRole is a role with CloudWatch Logs write access
+      level: ERROR
+    mappingTemplatesLocation:
+    mappingTemplates:
+      - dataSource: Dynamo_users
+        type: Mutation
+        field: createUser
+        request: createUserMutationResolver-request-mapping-template.vlt
+        response: createUserMutationResolver-response-mapping-template.vlt
+      - dataSource: Dynamo_users
+        type: Query
+        field: user
+        request: meQueryResolver-request-mapping-template.vlt
+        response: meQueryResolver-response-mapping-template.vlt
+    schema: "schema.graphql"
+    serviceRole: "AppSyncServiceRole"
+    dataSources:
+      - type: AMAZON_DYNAMODB
+        name: Dynamo_users
+        description: "Dynamo_users"
+        config:
+          tableName: ${self:provider.stage}-${self:service}_users
+          serviceRoleArn: { Fn::GetAtt: [AppSyncDynamoDBServiceRole, Arn] }
+          region: ${self:provider.region}
+
+resources:
+  Resources:
+    UsersTable:
+      Type: "AWS::DynamoDB::Table"
+      Properties:
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        BillingMode: PAY_PER_REQUEST
+        TableName: "${self:provider.stage}-${self:service}_users"
+    AppSyncDynamoDBServiceRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+        RoleName: "Dynamo-${self:custom.appSync.serviceRole}-${self:provider.stage}"
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal:
+                Service:
+                  - "appsync.amazonaws.com"
+              Action:
+                - "sts:AssumeRole"
+        Policies:
+          - PolicyName: "Dynamo-${self:custom.appSync.serviceRole}-Policy-${self:provider.stage}"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: "Allow"
+                  Action:
+                    - "dynamodb:*"
+                  Resource:
+                    - "arn:aws:dynamodb:${self:provider.region}:${self:custom.accountId}:table/${self:provider.stage}-${self:service}_users"

@@ -1,0 +1,14 @@
+{
+    "version" : "2017-02-28",
+    "operation" : "PutItem",
+    "key": {
+        "id": { "S" : "${context.arguments.id}"}
+    },
+    "attributeValues" : {
+        "id": {  "S": "${context.arguments.id}" },
+        "name": {  "S": "${context.arguments.name}" },
+        "email": { "S": "${context.arguments.email}"},
+        "age": { "S": "${context.arguments.age}"},
+        "registered": {  "BOOL": true }
+    }
+}
